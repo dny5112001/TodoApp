@@ -1,118 +1,198 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-  SafeAreaView,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import styles from './styles';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const STORAGE_KEY = '@todoList';
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const App = () => {
+  const [data, setData] = useState([]);
+  const [task, setTask] = useState('');
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
+  const [editedTask, setEditedTask] = useState('');
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const loadData = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
+      if (jsonValue !== null) {
+        setData(JSON.parse(jsonValue));
+      }
+    } catch (error) {
+      console.error('Error loading data from AsyncStorage:', error);
+    }
+  };
+
+  const saveData = async newData => {
+    try {
+      const jsonValue = JSON.stringify(newData);
+      await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
+    } catch (error) {
+      console.error('Error saving data to AsyncStorage:', error);
+    }
+  };
+
+  const handleAddTask = () => {
+    if (task.trim() === '') {
+      Alert.alert('Please Enter the task!');
+      return;
+    }
+    const newData = [...data, task];
+    setData(newData);
+    saveData(newData);
+    setTask('');
+  };
+
+  const handleDeleteTask = index => {
+    const newData = [...data];
+    newData.splice(index, 1);
+    setData(newData);
+    saveData(newData);
+  };
+
+  const handleEditTask = index => {
+    setEditedTask(data[index]);
+    setEditIndex(index);
+    setIsModalVisible(true);
+  };
+
+  const handleUpdateTask = () => {
+    if (editedTask.trim() === '') {
+      Alert.alert('Please Enter the task!');
+      return;
+    }
+    const newData = [...data];
+    newData[editIndex] = editedTask;
+    setData(newData);
+    saveData(newData);
+    setIsModalVisible(false);
+    setEditedTask('');
+  };
+
+  const renderData = ({item, index}) => {
+    return (
+      <View
+        style={{
+          flex: 1,
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          height: 60,
+          backgroundColor: '#215277',
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          marginVertical: 5,
+          elevation: 5,
+        }}>
+        <Text style={{width: '60%', color: '#fff'}}>{item}</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => handleDeleteTask(index)}>
+          <Text style={{color: '#000', fontWeight: '900'}}>Delete</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, {backgroundColor: '#269c7d'}]}
+          onPress={() => handleEditTask(index)}>
+          <Text style={{color: '#fff', fontWeight: '900'}}>Edit</Text>
+        </TouchableOpacity>
+      </View> 
+    );
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
+    <LinearGradient
+      start={{x: 0, y: 0}}
+      end={{x: 1, y: 1}}
+      colors={['#040918', '#082140', '#215277']}
+      style={styles.linearGradient}>
+      <View style={{flex: 1}}>
+        <StatusBar backgroundColor="#040918" barStyle="light-content" />
         <View
           style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            margin: 20,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+          <Text style={{fontSize: 45, fontWeight: '900', color: '#fff'}}>
+            Todo List
+          </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+        <TextInput
+          style={styles.input}
+          placeholder="add item..."
+          placeholderTextColor={'#fff'}
+          value={task}
+          onChangeText={text => setTask(text)}
+        />
+
+        <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
+          <Text style={styles.addButtonText}>ADD</Text>
+        </TouchableOpacity>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{flex: 1, flexDirection: 'column'}}
+          style={styles.listContainer}>
+          <FlatList
+            data={data}
+            renderItem={renderData}
+            keyExtractor={(item, index) => index.toString()}
+            style={{marginBottom: 20}}
+            showsVerticalScrollIndicator={false}
+          />
+        </ScrollView>
+
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          transparent={true}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Edit task..."
+                placeholderTextColor={'#fff'}
+                value={editedTask}
+                onChangeText={text => setEditedTask(text)}
+              />
+              <TouchableOpacity
+                style={[styles.modalButton, {backgroundColor: '#269c7d'}]}
+                onPress={handleUpdateTask}>
+                <Text style={[styles.modalButtonText, {color: '#fff'}]}>
+                  Update
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setIsModalVisible(false)}>
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </LinearGradient>
+  );
+};
 
 export default App;
